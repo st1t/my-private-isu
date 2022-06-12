@@ -3,8 +3,10 @@ locals {
   github_userid       = "st1t" # EC2インスタンスの公開鍵に利用。GitHubに複数の鍵が登録している場合はどの鍵が利用されているか注意
   app_name            = "my-private-isu" # あらゆるリソースのタグに利用している。好きな名前に修正してOK
   cidr_vpc            = "10.0" # Networkの第1,2オクテットまでを指定。既存のVPCとCIDRを被せたくない時に修正すると良い
-  game_instance_type  = "t3.medium" # 競技者用EC2インスタンスタイプ。公式推奨はc4.large
-  bench_instance_type = "t3.medium" # ベンチマーク用EC2インスタンスタイプ。公式推奨はc5.xlarge
+  game_instance_type  = "c6i.large" # 競技者用EC2インスタンスタイプ。公式推奨はc4.large
+  game_spot_price     = "0.035" # 競技者用EC2スポットインスタンス料金
+  bench_instance_type = "c6i.xlarge" # ベンチマーク用EC2インスタンスタイプ。公式推奨はc5.xlarge
+  bench_spot_price    = "0.07" # ベンチマーク用EC2スポットインスタンス料金
 }
 
 data http checkip {
@@ -22,5 +24,7 @@ module "my-private-isu" {
   my_ip               = "${chomp(data.http.checkip.body)}/32"
   public_key          = chomp(data.http.public_key.body)
   game_instance_type  = local.game_instance_type
+  game_spot_price     = local.game_spot_price
   bench_instance_type = local.bench_instance_type
+  bench_spot_price    = local.bench_spot_price
 }

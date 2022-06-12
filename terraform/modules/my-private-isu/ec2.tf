@@ -9,6 +9,7 @@ resource "aws_security_group" "main" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = [var.my_ip]
+    self = true
   }
 
   egress {
@@ -28,15 +29,28 @@ resource "aws_key_pair" "main" {
   public_key = var.public_key
 }
 
-resource "aws_instance" "main-01" {
-  ami           = "ami-024cfcacc753fa53e"
-  instance_type = var.instance_type
+resource "aws_instance" "game-01" {
+  ami           = "ami-0b37d5c92add6d0d5"
+  instance_type = var.game_instance_type
 
   subnet_id                   = aws_subnet.main-public-a.id
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
   tags                        = {
-    Name = "${var.app_name}-01"
+    Name = "${var.app_name}-game-01"
+  }
+}
+
+resource "aws_instance" "bench-01" {
+  ami           = "ami-024cfcacc753fa53e"
+  instance_type = var.bench_instance_type
+
+  subnet_id                   = aws_subnet.main-public-a.id
+  vpc_security_group_ids      = [aws_security_group.main.id]
+  key_name                    = var.app_name
+  associate_public_ip_address = true
+  tags                        = {
+    Name = "${var.app_name}-bench-01"
   }
 }

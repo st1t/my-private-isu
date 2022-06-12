@@ -9,6 +9,7 @@ stateファイルの管理はローカルにしているので、永続化した
 
 ```shell
 $ cd terraform/
+$ vim main.tf # localsに定義されているgithub_useridを修正。その他項目の修正は任意。
 $ terraform init
 $ terraform apply
 ```

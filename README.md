@@ -23,3 +23,49 @@ $ terraform output
 ec2-01-public-ip = "54.168.88.47"
 $ ssh -i ${GitHubに登録した公開鍵のペアの秘密鍵} ubuntu@54.168.88.47
 ```
+
+# リソースを使ってない時
+
+## 短期間
+
+EC2インスタンスを停止しておく  
+Public IPは費用の観点から固定にしていないので注意
+
+### 停止
+```shell
+$ ./stop-instance.sh 
+{
+    "StoppingInstances": [
+        {
+            "CurrentState": {
+                "Code": 64,
+                "Name": "stopping"
+            },
+            "InstanceId": "i-068127bf49c91b3c2",
+            "PreviousState": {
+                "Code": 16,
+                "Name": "running"
+            }
+        }
+    ]
+}
+$ 
+```
+
+### 起動
+
+```shell
+$ ./start-instance.sh
+EC2インスタンスを起動中...
+EC2 instance IP: "18.181.169.69"
+$
+$ ssh ubuntu@18.181.169.69
+```
+
+## 長期間
+
+無駄に動かし続けるとお金がかかるので、全てのリソースを削除する
+
+```shell
+$ terraform destroy
+```

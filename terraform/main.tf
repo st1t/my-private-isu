@@ -22,7 +22,3 @@ module "my-private-isu" {
   public_key    = chomp(data.http.public_key.body)
   instance_type = local.instance_type
 }
-
-output "ec2-01-public-ip" {
-  value = module.my-private-isu.ec2_01_public_ip
-}

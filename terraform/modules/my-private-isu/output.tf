@@ -1,3 +1,3 @@
-output "ec2_ip_01" {
-  value = aws_instance.main-01.associate_public_ip_address
+output "ec2_01_public_ip" {
+  value = aws_instance.main-01.public_ip
 }

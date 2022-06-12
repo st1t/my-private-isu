@@ -12,3 +12,14 @@ $ cd terraform/
 $ terraform init
 $ terraform apply
 ```
+
+# ssh login
+
+作成したEC2のPublic IPはterraform outputで確認できる。  
+GitHubに登録している公開鍵のペアの秘密鍵を利用すればログインできる。
+
+```shell
+$ terraform output
+ec2-01-public-ip = "54.168.88.47"
+$ ssh -i ${GitHubに登録した公開鍵のペアの秘密鍵} ubuntu@54.168.88.47
+```

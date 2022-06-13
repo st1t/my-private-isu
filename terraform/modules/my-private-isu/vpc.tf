@@ -33,6 +33,16 @@ resource "aws_subnet" "main-public-c" {
   }
 }
 
+resource "aws_subnet" "main-public-d" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "${var.cidr_vpc}.3.0/24"
+  availability_zone = "ap-northeast-1d"
+
+  tags = {
+    Name = "${var.app_name}-public-d"
+  }
+}
+
 #=========================================================
 # Internet Gateway
 #=========================================================
@@ -68,4 +78,9 @@ resource "aws_route_table_association" "main-public-a" {
 resource "aws_route_table_association" "main-public-c" {
   route_table_id = aws_route_table.main-public.id
   subnet_id      = aws_subnet.main-public-c.id
+}
+
+resource "aws_route_table_association" "main-public-d" {
+  route_table_id = aws_route_table.main-public.id
+  subnet_id      = aws_subnet.main-public-d.id
 }

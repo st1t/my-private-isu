@@ -6,3 +6,4 @@ variable "game_instance_type" {}
 variable "game_spot_price" {}
 variable "bench_instance_type" {}
 variable "bench_spot_price" {}
+variable "subnet_name" {}

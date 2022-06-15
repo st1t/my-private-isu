@@ -1,3 +1,10 @@
+data "aws_subnet" "main" {
+  filter {
+    name   = "tag:Name"
+    values = [var.subnet_name]
+  }
+}
+
 resource "aws_security_group" "main" {
   name        = "ec2-${var.app_name}"
   description = "ec2-${var.app_name}"
@@ -34,7 +41,7 @@ resource "aws_spot_instance_request" "game-01" {
   spot_price                  = var.game_spot_price
   spot_type                   = "persistent" # 停止できるようにpersistentにする
   instance_type               = var.game_instance_type
-  subnet_id                   = aws_subnet.main-public-a.id
+  subnet_id                   = data.aws_subnet.main.id
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
@@ -63,7 +70,7 @@ resource "aws_spot_instance_request" "game-02" {
   spot_price                  = var.game_spot_price
   spot_type                   = "persistent" # 停止できるようにpersistentにする
   instance_type               = var.game_instance_type
-  subnet_id                   = aws_subnet.main-public-c.id
+  subnet_id                   = data.aws_subnet.main.id
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
@@ -92,7 +99,7 @@ resource "aws_spot_instance_request" "game-03" {
   spot_price                  = var.game_spot_price
   spot_type                   = "persistent" # 停止できるようにpersistentにする
   instance_type               = var.game_instance_type
-  subnet_id                   = aws_subnet.main-public-d.id
+  subnet_id                   = data.aws_subnet.main.id
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
@@ -121,7 +128,7 @@ resource "aws_spot_instance_request" "bench-01" {
   spot_price                  = var.bench_spot_price
   spot_type                   = "persistent" # 停止できるようにpersistentにする
   instance_type               = var.bench_instance_type
-  subnet_id                   = aws_subnet.main-public-a.id
+  subnet_id                   = data.aws_subnet.main.id
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true

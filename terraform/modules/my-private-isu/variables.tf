@@ -3,6 +3,8 @@ variable "cidr_vpc" {}
 variable "subnet_name" {}
 variable "my_ip" {}
 variable "public_key" {}
+variable "github_users" {}
+variable "os_login_user" {}
 
 variable "game_instance_ami" {}
 variable "game_instance_type" {}

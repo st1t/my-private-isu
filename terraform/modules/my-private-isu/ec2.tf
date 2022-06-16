@@ -3,6 +3,7 @@ data "aws_subnet" "main" {
     name   = "tag:Name"
     values = [var.subnet_name]
   }
+  depends_on = [aws_subnet.main-public-a, aws_subnet.main-public-c, aws_subnet.main-public-d]
 }
 
 resource "aws_security_group" "main" {
@@ -45,6 +46,7 @@ resource "aws_spot_instance_request" "game-01" {
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
+  wait_for_fulfillment = true
 
   tags = {
     Name = "spot-${var.app_name}-game-01"
@@ -74,6 +76,7 @@ resource "aws_spot_instance_request" "game-02" {
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
+  wait_for_fulfillment = true
 
   tags = {
     Name = "spot-${var.app_name}-game-02"
@@ -103,6 +106,7 @@ resource "aws_spot_instance_request" "game-03" {
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
+  wait_for_fulfillment = true
 
   tags = {
     Name = "spot-${var.app_name}-game-03"
@@ -132,6 +136,7 @@ resource "aws_spot_instance_request" "bench-01" {
   vpc_security_group_ids      = [aws_security_group.main.id]
   key_name                    = var.app_name
   associate_public_ip_address = true
+  wait_for_fulfillment = true
 
   tags = {
     Name = "spot-${var.app_name}-bench-01"

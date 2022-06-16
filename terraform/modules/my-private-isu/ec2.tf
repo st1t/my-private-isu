@@ -91,6 +91,13 @@ resource "aws_spot_instance_request" "bench" {
   key_name                    = var.app_name
   associate_public_ip_address = true
   wait_for_fulfillment        = true
+  user_data =<<EOF
+#!/bin/bash
+for user in ${var.github_users};
+do
+  curl https://github.com/$user.keys >> /home/${var.os_login_user}/.ssh/authorized_keys
+done
+EOF
 
   tags = {
     Name = "spot-${var.app_name}-bench-01"

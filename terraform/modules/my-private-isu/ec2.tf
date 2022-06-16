@@ -48,7 +48,7 @@ resource "aws_spot_instance_request" "game" {
   key_name                    = var.app_name
   associate_public_ip_address = true
   wait_for_fulfillment        = true
-  user_data =<<EOF
+  user_data                   = <<EOF
 #!/bin/bash
 for user in ${var.github_users};
 do
@@ -57,7 +57,7 @@ done
 EOF
 
   tags = {
-    Name = "spot-${var.app_name}-game-${format("%02d",count.index + 1)}"
+    Name = "spot-${var.app_name}-game-${format("%02d", count.index + 1)}"
   }
 }
 
@@ -74,7 +74,7 @@ resource "aws_ec2_tag" "game" {
   count       = var.game_instance_count
   resource_id = data.aws_instance.game[count.index].id
   key         = "Name"
-  value       = "${var.app_name}-game-${format("%02d",count.index + 1)}"
+  value       = "${var.app_name}-game-${format("%02d", count.index + 1)}"
   lifecycle {
     ignore_changes = [resource_id]
   }
@@ -91,7 +91,7 @@ resource "aws_spot_instance_request" "bench" {
   key_name                    = var.app_name
   associate_public_ip_address = true
   wait_for_fulfillment        = true
-  user_data =<<EOF
+  user_data                   = <<EOF
 #!/bin/bash
 for user in ${var.github_users};
 do

@@ -14,8 +14,8 @@ resource "aws_vpc" "main" {
 # Subnet
 #=========================================================
 resource "aws_subnet" "main-public-a" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "${var.cidr_vpc}.1.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "${var.cidr_vpc}.1.0/24"
   availability_zone = "ap-northeast-1a"
 
   tags = {
@@ -24,8 +24,8 @@ resource "aws_subnet" "main-public-a" {
 }
 
 resource "aws_subnet" "main-public-c" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "${var.cidr_vpc}.2.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "${var.cidr_vpc}.2.0/24"
   availability_zone = "ap-northeast-1c"
 
   tags = {
@@ -34,8 +34,8 @@ resource "aws_subnet" "main-public-c" {
 }
 
 resource "aws_subnet" "main-public-d" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "${var.cidr_vpc}.3.0/24"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "${var.cidr_vpc}.3.0/24"
   availability_zone = "ap-northeast-1d"
 
   tags = {

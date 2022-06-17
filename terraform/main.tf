@@ -1,11 +1,11 @@
 # localesに登録しているものは全て個々の事情に応じて修正してOK
 locals {
-  github_user   = "st1t"                             # GitHubに公開されている公開鍵を使ってAWSのキーペアに利用。GitHubに複数の鍵が登録している場合はどの鍵が利用されているか注意
-  github_users  = "kikumoto TanigUhey"               # GitHubのユーザー名。これを利用して/home/${os_login_user}/.ssh/authorized_keysを設定
-  os_login_user = "ubuntu"                           # authorized_keysを設定するOSのユーザー名
   app_name      = "${local.github_user}-private-isu" # あらゆるリソースのタグに利用している。好きな名前に修正してOK
   cidr_vpc      = "10.0"                             # Networkの第1,2オクテットまでを指定。既存のVPCとCIDRを被せたくない時に修正すると良い
   subnet_name   = "${local.app_name}-public-a"       # EC2のsubnet。末尾のa,c,dを変えればそれぞれのAZに構築される
+  github_user   = "st1t"                             # GitHubに公開されている公開鍵を使ってAWSのキーペアに利用。GitHubに複数の鍵が登録している場合はどの鍵が利用されているか注意
+  github_users  = "kikumoto TanigUhey"               # GitHubのユーザー名。これを利用して/home/${os_login_user}/.ssh/authorized_keysを設定
+  os_login_user = "ubuntu"                           # authorized_keysを設定するOSのユーザー名
 
   game_instance_count = "1"                     # 競技者用EC2インスタンスの台数
   game_instance_ami   = "ami-0b37d5c92add6d0d5" # 競技者用EC2インスタンスのAMI
@@ -31,10 +31,10 @@ module "my-private-isu" {
   app_name      = local.app_name
   cidr_vpc      = local.cidr_vpc
   subnet_name   = local.subnet_name
-  my_ip         = "${chomp(data.http.checkip.body)}/32"
-  public_key    = chomp(data.http.public_key.body)
   github_users  = local.github_users
   os_login_user = local.os_login_user
+  my_ip         = "${chomp(data.http.checkip.body)}/32" # EC2のセキュリティグループに追加するIP
+  public_key    = chomp(data.http.public_key.body)
 
   game_instance_count = local.game_instance_count
   game_instance_ami   = local.game_instance_ami

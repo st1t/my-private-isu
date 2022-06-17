@@ -1,4 +1,5 @@
 # localesに登録しているものは全て個々の事情に応じて修正してOK
+# AMIを変えれば過去のISUCON環境も作れる。 https://github.com/matsuu/aws-isucon#ami
 locals {
   app_name      = "${local.github_user}-private-isu" # あらゆるリソースのタグに利用している。好きな名前に修正してOK
   cidr_vpc      = "10.0"                             # Networkの第1,2オクテットまでを指定。既存のVPCとCIDRを被せたくない時に修正すると良い

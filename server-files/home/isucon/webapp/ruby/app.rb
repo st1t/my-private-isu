@@ -180,6 +180,15 @@ module Isucondition
         jia_service_url,
       )
 
+      db.xquery('SELECT `id`, `condition` FROM `isu_condition`').each do |row|
+        condition_level = calculate_condition_level(row.fetch(:condition))
+        db.xquery(
+          "UPDATE `isu_condition` SET `condition_level` = ? WHERE `id` = ?",
+          condition_level,
+          row.fetch(:id)
+        )
+      end
+
       content_type :json
       { language: 'ruby' }.to_json
     end
@@ -237,7 +246,7 @@ module Isucondition
             timestamp: last_condition.fetch(:timestamp).to_i,
             is_sitting: last_condition.fetch(:is_sitting),
             condition: last_condition.fetch(:condition),
-            condition_level: calculate_condition_level(last_condition.fetch(:condition)),
+            condition_level: last_condition.fetch(:condition_level),
             message: last_condition.fetch(:message),
           } : nil
 
@@ -558,7 +567,7 @@ module Isucondition
       end
 
       conditions_response = conditions.map do |c|
-        c_level = calculate_condition_level(c.fetch(:condition))
+        c_level = c.fetch(:condition_level)
         if condition_level.include?(c_level)
           {
             jia_isu_uuid: c.fetch(:jia_isu_uuid),
@@ -589,10 +598,10 @@ module Isucondition
         character_critical_isu_conditions = []
 
         isu_list.each do |isu|
-          conditions = db.xquery('SELECT `condition`,`timestamp` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1', isu.fetch(:jia_isu_uuid)).to_a
+          conditions = db.xquery('SELECT `condition_level`,`timestamp` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1', isu.fetch(:jia_isu_uuid)).to_a
           unless conditions.empty?
             isu_last_condition = conditions.first
-            condition_level = calculate_condition_level(isu_last_condition.fetch(:condition))
+            condition_level = isu_last_condition.fetch(:condition_level)
             trend_condition = { isu_id: isu.fetch(:id), timestamp: isu_last_condition.fetch(:timestamp).to_i }
             case condition_level
             when 'info'
@@ -642,21 +651,31 @@ module Isucondition
       halt_error 400, 'bad request body' if json_params.empty?
 
       db_transaction do
+        ElasticAPM.start_span("SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = #{jia_isu_uuid}")
         count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
+        ElasticAPM.end_span
         halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
 
         json_params.each do |cond|
-          timestamp = Time.at(cond.fetch(:timestamp))
-          halt_error 400, 'bad request body' unless valid_condition_format?(cond.fetch(:condition))
+          ElasticAPM.with_span("json_params.each do |#{cond}|") do
+            timestamp = Time.at(cond.fetch(:timestamp))
+            condition = cond.fetch(:condition)
+            halt_error 400, 'bad request body' unless valid_condition_format?(condition)
 
-          db.xquery(
-            'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES (?, ?, ?, ?, ?)',
-            jia_isu_uuid,
-            timestamp,
-            cond.fetch(:is_sitting),
-            cond.fetch(:condition),
-            cond.fetch(:message),
-          )
+            condition_level = calculate_condition_level(condition)
+
+            ElasticAPM.start_span("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)")
+            db.xquery(
+              'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)',
+              jia_isu_uuid,
+              timestamp,
+              cond.fetch(:is_sitting),
+              cond.fetch(:condition),
+              cond.fetch(:message),
+              condition_level
+            )
+            ElasticAPM.end_span
+          end
         end
       end
 

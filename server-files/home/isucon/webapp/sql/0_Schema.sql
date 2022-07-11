@@ -39,5 +39,6 @@ CREATE TABLE `isu_association_config` (
 
 CREATE INDEX jia_isu_uuid_timestamp ON isu_condition(jia_isu_uuid,timestamp);
 CREATE INDEX isu_character ON isu(`character`);
+CREATE INDEX isu_jia_isu_uuid ON isu(`jia_isu_uuid`);
 
 -- ALTER TABLE isu_condition ADD condition_level varchar(8) NULL;

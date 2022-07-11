@@ -355,6 +355,7 @@ module Isucondition
 
     # ISUのコンディショングラフ描画のための情報を取得
     get '/api/isu/:jia_isu_uuid/graph' do
+      ElasticAPM.start_span('Block1')
       jia_user_id = user_id_from_session
       halt_error 401, 'you are not signed in' unless jia_user_id
 
@@ -363,14 +364,16 @@ module Isucondition
       halt_error 400, 'missing: datetime' if !datetime_str || datetime_str.empty?
       datetime = Time.at(Integer(datetime_str)) rescue halt_error(400, 'bad format: datetime')
       date = Time.new(datetime.year, datetime.month, datetime.day, datetime.hour, 0, 0)
+      ElasticAPM.end_span
 
-
+      ElasticAPM.start_span('Block2')
       res = db_transaction do
         cnt = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?', jia_user_id, jia_isu_uuid).first
         halt_error 404, 'not found: isu' if cnt.fetch(:cnt) == 0
 
         generate_isu_graph_response(jia_isu_uuid, date)
       end
+      ElasticAPM.end_span
 
       content_type :json
       res.to_json
@@ -632,50 +635,52 @@ module Isucondition
 
     # ISUからのコンディションを受け取る
     post '/api/condition/:jia_isu_uuid' do
-      # TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
-      drop_probability = 0.9
-      if rand <= drop_probability
-        request.env['rack.logger'].warn 'drop post isu condition request'
-        halt_error 202, ''
-      end
+      ElasticAPM.with_span('block1') do
+        # TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
+        # drop_probability = 0.9
+        # if rand <= drop_probability
+        #   request.env['rack.logger'].warn 'drop post isu condition request'
+        #   halt_error 202, ''
+        # end
 
-      jia_isu_uuid = params[:jia_isu_uuid]
-      halt_error 400, 'missing: jia_isu_uuid' if !jia_isu_uuid || jia_isu_uuid.empty?
+        jia_isu_uuid = params[:jia_isu_uuid]
+        halt_error 400, 'missing: jia_isu_uuid' if !jia_isu_uuid || jia_isu_uuid.empty?
 
-      begin
-        json_params
-      rescue JSON::ParserError
-        halt_error 400, 'bad request body'
-      end
-      halt_error 400, 'bad request body' unless json_params.kind_of?(Array)
-      halt_error 400, 'bad request body' if json_params.empty?
+        begin
+          json_params
+        rescue JSON::ParserError
+          halt_error 400, 'bad request body'
+        end
+        halt_error 400, 'bad request body' unless json_params.kind_of?(Array)
+        halt_error 400, 'bad request body' if json_params.empty?
 
-      db_transaction do
-        ElasticAPM.start_span("SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = #{jia_isu_uuid}")
-        count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
-        ElasticAPM.end_span
-        halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
+        ElasticAPM.with_span('Block2') do
+          # db_transaction do
+          ElasticAPM.start_span("SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = #{jia_isu_uuid}")
+          count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
+          ElasticAPM.end_span
+          halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
 
-        json_params.each do |cond|
-          ElasticAPM.with_span("json_params.each do |#{cond}|") do
-            timestamp = Time.at(cond.fetch(:timestamp))
-            condition = cond.fetch(:condition)
-            halt_error 400, 'bad request body' unless valid_condition_format?(condition)
+          values = json_params.map do |cond|
+            ElasticAPM.with_span("json_params.each do |#{cond}|") do
+              timestamp = Time.at(cond.fetch(:timestamp))
+              condition = cond.fetch(:condition)
+              halt_error 400, 'bad request body' unless valid_condition_format?(condition)
 
-            condition_level = calculate_condition_level(condition)
+              condition_level = calculate_condition_level(condition)
 
-            ElasticAPM.start_span("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)")
-            db.xquery(
-              'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)',
-              jia_isu_uuid,
-              timestamp,
-              cond.fetch(:is_sitting),
-              cond.fetch(:condition),
-              cond.fetch(:message),
-              condition_level
-            )
-            ElasticAPM.end_span
+              [jia_isu_uuid, timestamp, cond.fetch(:is_sitting), cond.fetch(:condition), cond.fetch(:message), condition_level]
+            end
           end
+          ElasticAPM.with_span("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)") do
+            # p "sito-values: #{values}"
+            st = ('(?),' * values.count).gsub(/,$/, '')
+            db.xquery(
+              'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES ' + st,
+              values
+            )
+          end
+          # end
         end
       end
 

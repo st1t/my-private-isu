@@ -1,13 +1,19 @@
-#!/bin/bash
+#!/bin/bash -eu
 
-game_instance_id=$(terraform output -json | jq -r '.game_instance_id.value')
-bench_instance_id=$(terraform output -json | jq -r '.bench_instance_id.value')
+game_instance_ids=$(terraform output -json | jq -r '.game_instance_id.value[]')
+game_instance_ami=$(terraform output -json | jq -r '.game_instance_ami.value')
+bench_instance_ids=$(terraform output -json | jq -r '.bench_instance_id.value[]')
+bench_instance_ami=$(terraform output -json | jq -r '.bench_instance_ami.value')
+tmp_file='.aws_ec2_describe_instances.log'
 
-aws ec2 start-instances --instance-ids "$game_instance_id" "$bench_instance_id" | cat
+aws ec2 start-instances --instance-ids "$game_instance_ids" "$bench_instance_ids"
 echo "EC2インスタンスを起動中..."
 sleep 5
-game_ip=$(aws ec2 describe-instances | jq '.Reservations[].Instances[]|select(.ImageId == "ami-0b37d5c92add6d0d5" and .State.Name == "running" )|.PublicIpAddress')
-bench_ip=$(aws ec2 describe-instances | jq '.Reservations[].Instances[]|select(.ImageId == "ami-024cfcacc753fa53e" and .State.Name == "running" )|.PublicIpAddress')
+aws ec2 describe-instances >$tmp_file
+game_ip=$(jq --arg ami "$game_instance_ami" '.Reservations[].Instances[]|select(.ImageId == $ami and .State.Name == "running" )|.PublicIpAddress' $tmp_file)
+bench_ip=$(jq --arg ami "$bench_instance_ami" '.Reservations[].Instances[]|select(.ImageId == $ami and .State.Name == "running" )|.PublicIpAddress' $tmp_file)
 
 echo "Game EC2 instance IP: $game_ip"
 echo "Bench EC2 instance IP: $bench_ip"
+
+rm -f $tmp_file

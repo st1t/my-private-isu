@@ -5,9 +5,17 @@ require 'sinatra/base'
 require 'uri'
 require 'mysql2'
 require 'mysql2-cs-bind'
+require 'ddtrace'
+
+Datadog.configure do |c|
+  c.service = 'isucon12'
+  c.tracing.instrument :sinatra
+  c.tracing.instrument :mysql2
+end
 
 module Isucondition
   class App < Sinatra::Base
+    register Datadog::Tracing::Contrib::Sinatra::Tracer
     configure :development do
       require 'sinatra/reloader'
       register Sinatra::Reloader

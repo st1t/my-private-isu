@@ -5,11 +5,9 @@ require 'sinatra/base'
 require 'uri'
 require 'mysql2'
 require 'mysql2-cs-bind'
-require 'elastic-apm'
 
 module Isucondition
   class App < Sinatra::Base
-    use ElasticAPM::Middleware
     configure :development do
       require 'sinatra/reloader'
       register Sinatra::Reloader
@@ -355,7 +353,6 @@ module Isucondition
 
     # ISUのコンディショングラフ描画のための情報を取得
     get '/api/isu/:jia_isu_uuid/graph' do
-      ElasticAPM.start_span('Block1')
       jia_user_id = user_id_from_session
       halt_error 401, 'you are not signed in' unless jia_user_id
 
@@ -364,16 +361,13 @@ module Isucondition
       halt_error 400, 'missing: datetime' if !datetime_str || datetime_str.empty?
       datetime = Time.at(Integer(datetime_str)) rescue halt_error(400, 'bad format: datetime')
       date = Time.new(datetime.year, datetime.month, datetime.day, datetime.hour, 0, 0)
-      ElasticAPM.end_span
 
-      ElasticAPM.start_span('Block2')
       res = db_transaction do
         cnt = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?', jia_user_id, jia_isu_uuid).first
         halt_error 404, 'not found: isu' if cnt.fetch(:cnt) == 0
 
         generate_isu_graph_response(jia_isu_uuid, date)
       end
-      ElasticAPM.end_span
 
       content_type :json
       res.to_json
@@ -588,12 +582,9 @@ module Isucondition
 
     # ISUの性格毎の最新のコンディション情報
     get '/api/trend' do
-      ElasticAPM.start_span('SELECT `character` FROM `isu` GROUP BY `character`')
       character_list = db.query('SELECT `character` FROM `isu` GROUP BY `character`')
-      ElasticAPM.end_span
 
       res = character_list.map do |character|
-        ElasticAPM.start_span("SELECT id,jia_isu_uuid FROM `isu` WHERE `character` = #{character.fetch(:character)}")
         isu_list = db.xquery('SELECT id,jia_isu_uuid FROM `isu` WHERE `character` = ?', character.fetch(:character))
         character_info_isu_conditions = []
         character_warning_isu_conditions = []
@@ -615,7 +606,6 @@ module Isucondition
             end
           end
         end
-        ElasticAPM.end_span
 
         # character_info_isu_conditions.sort! { |a,b| b.fetch(:timestamp) <=> a.fetch(:timestamp) }
         # character_warning_isu_conditions.sort! { |a,b| b.fetch(:timestamp) <=> a.fetch(:timestamp) }
@@ -635,54 +625,43 @@ module Isucondition
 
     # ISUからのコンディションを受け取る
     post '/api/condition/:jia_isu_uuid' do
-      ElasticAPM.with_span('block1') do
-        # TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
-        drop_probability = 0.9
-        if rand <= drop_probability
-          request.env['rack.logger'].warn 'drop post isu condition request'
-          halt_error 202, ''
-        end
-
-        jia_isu_uuid = params[:jia_isu_uuid]
-        halt_error 400, 'missing: jia_isu_uuid' if !jia_isu_uuid || jia_isu_uuid.empty?
-
-        begin
-          json_params
-        rescue JSON::ParserError
-          halt_error 400, 'bad request body'
-        end
-        halt_error 400, 'bad request body' unless json_params.kind_of?(Array)
-        halt_error 400, 'bad request body' if json_params.empty?
-
-        ElasticAPM.with_span('Block2') do
-          # db_transaction do
-          ElasticAPM.start_span("SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = #{jia_isu_uuid}")
-          count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
-          ElasticAPM.end_span
-          halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
-
-          values = json_params.map do |cond|
-            ElasticAPM.with_span("json_params.each do |#{cond}|") do
-              timestamp = Time.at(cond.fetch(:timestamp))
-              condition = cond.fetch(:condition)
-              halt_error 400, 'bad request body' unless valid_condition_format?(condition)
-
-              condition_level = calculate_condition_level(condition)
-
-              [jia_isu_uuid, timestamp, cond.fetch(:is_sitting), cond.fetch(:condition), cond.fetch(:message), condition_level]
-            end
-          end
-          ElasticAPM.with_span("INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES (?, ?, ?, ?, ?, ?)") do
-            # p "sito-values: #{values}"
-            st = ('(?),' * values.count).gsub(/,$/, '')
-            db.xquery(
-              'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES ' + st,
-              values
-            )
-          end
-          # end
-        end
+      # TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
+      drop_probability = 0.9
+      if rand <= drop_probability
+        request.env['rack.logger'].warn 'drop post isu condition request'
+        halt_error 202, ''
       end
+
+      jia_isu_uuid = params[:jia_isu_uuid]
+      halt_error 400, 'missing: jia_isu_uuid' if !jia_isu_uuid || jia_isu_uuid.empty?
+
+      begin
+        json_params
+      rescue JSON::ParserError
+        halt_error 400, 'bad request body'
+      end
+      halt_error 400, 'bad request body' unless json_params.kind_of?(Array)
+      halt_error 400, 'bad request body' if json_params.empty?
+
+      # db_transaction do
+      count = db.xquery('SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_isu_uuid` = ?', jia_isu_uuid).first
+      halt_error 404, 'not found: isu' if count.fetch(:cnt).zero?
+
+      values = json_params.map do |cond|
+        timestamp = Time.at(cond.fetch(:timestamp))
+        condition = cond.fetch(:condition)
+        halt_error 400, 'bad request body' unless valid_condition_format?(condition)
+
+        condition_level = calculate_condition_level(condition)
+
+        [jia_isu_uuid, timestamp, cond.fetch(:is_sitting), cond.fetch(:condition), cond.fetch(:message), condition_level]
+      end
+      # p "sito-values: #{values}"
+      st = ('(?),' * values.count).gsub(/,$/, '')
+      db.xquery(
+        'INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `condition_level`) VALUES ' + st,
+        values
+      )
 
       status 202
       ''

@@ -556,45 +556,44 @@ module Isucondition
     def get_isu_conditions_from_db(jia_isu_uuid, end_time, condition_level, start_time, limit, isu_name)
       conditions = if start_time.to_i == 0
         db.xquery(
-          'SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND `timestamp` < ? ORDER BY `timestamp` DESC',
+          'SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND condition_level IN (?) AND `timestamp` < ? ORDER BY `timestamp` DESC  LIMIT 20',
           jia_isu_uuid,
+          condition_level.to_a,
           end_time,
         )
       else
         db.xquery(
-          'SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND `timestamp` < ? AND ? <= `timestamp` ORDER BY `timestamp` DESC',
+          'SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? AND condition_level IN (?) AND `timestamp` < ? AND ? <= `timestamp` ORDER BY `timestamp` DESC LIMIT 20',
           jia_isu_uuid,
+          condition_level.to_a,
           end_time,
           start_time,
         )
       end
 
       conditions_response = conditions.map do |c|
-        c_level = c.fetch(:condition_level)
-        if condition_level.include?(c_level)
-          {
-            jia_isu_uuid: c.fetch(:jia_isu_uuid),
-            isu_name: isu_name,
-            timestamp: c.fetch(:timestamp).to_i,
-            is_sitting: c.fetch(:is_sitting),
-            condition: c.fetch(:condition),
-            condition_level: c_level,
-            message: c.fetch(:message),
-          }
-        else
-          nil
-        end
+        {
+          jia_isu_uuid: c.fetch(:jia_isu_uuid),
+          isu_name: isu_name,
+          timestamp: c.fetch(:timestamp).to_i,
+          is_sitting: c.fetch(:is_sitting),
+          condition: c.fetch(:condition),
+          condition_level: c.fetch(:condition_level),
+          message: c.fetch(:message),
+        }
       end.compact
 
-      conditions_response = conditions_response[0, limit] if conditions_response.size > limit
       conditions_response
     end
 
     # ISUの性格毎の最新のコンディション情報
     get '/api/trend' do
+      ElasticAPM.start_span('SELECT `character` FROM `isu` GROUP BY `character`')
       character_list = db.query('SELECT `character` FROM `isu` GROUP BY `character`')
+      ElasticAPM.end_span
 
       res = character_list.map do |character|
+        ElasticAPM.start_span("SELECT id,jia_isu_uuid FROM `isu` WHERE `character` = #{character.fetch(:character)}")
         isu_list = db.xquery('SELECT id,jia_isu_uuid FROM `isu` WHERE `character` = ?', character.fetch(:character))
         character_info_isu_conditions = []
         character_warning_isu_conditions = []
@@ -616,6 +615,7 @@ module Isucondition
             end
           end
         end
+        ElasticAPM.end_span
 
         # character_info_isu_conditions.sort! { |a,b| b.fetch(:timestamp) <=> a.fetch(:timestamp) }
         # character_warning_isu_conditions.sort! { |a,b| b.fetch(:timestamp) <=> a.fetch(:timestamp) }
@@ -637,11 +637,11 @@ module Isucondition
     post '/api/condition/:jia_isu_uuid' do
       ElasticAPM.with_span('block1') do
         # TODO: 一定割合リクエストを落としてしのぐようにしたが、本来は全量さばけるようにすべき
-        # drop_probability = 0.9
-        # if rand <= drop_probability
-        #   request.env['rack.logger'].warn 'drop post isu condition request'
-        #   halt_error 202, ''
-        # end
+        drop_probability = 0.9
+        if rand <= drop_probability
+          request.env['rack.logger'].warn 'drop post isu condition request'
+          halt_error 202, ''
+        end
 
         jia_isu_uuid = params[:jia_isu_uuid]
         halt_error 400, 'missing: jia_isu_uuid' if !jia_isu_uuid || jia_isu_uuid.empty?

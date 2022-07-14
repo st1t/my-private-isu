@@ -6,9 +6,10 @@ require 'uri'
 require 'mysql2'
 require 'mysql2-cs-bind'
 require 'ddtrace'
+require 'date'
 
 Datadog.configure do |c|
-  c.service = 'isucon12'
+  c.service = 'isucon11q'
   c.tracing.instrument :sinatra
   c.tracing.instrument :mysql2
 end
@@ -590,6 +591,13 @@ module Isucondition
 
     # ISUの性格毎の最新のコンディション情報
     get '/api/trend' do
+
+      api_trend_cache = db.xquery('SELECT * FROM `api_trend_cache`')
+      content_type :json
+      if api_trend_cache.count != 0 && api_trend_cache.first.fetch(:timestamp) > Time.now - 1
+        return api_trend_cache.first.fetch(:json_data)
+      end
+
       character_list = db.query('SELECT `character` FROM `isu` GROUP BY `character`')
 
       res = character_list.map do |character|
@@ -627,7 +635,10 @@ module Isucondition
         }
       end
 
-      content_type :json
+      # OK: INSERT INTO `api_trend_cache` (timestamp, json_data) VALUES ('2022/07/14 17:20:07', '{}')
+      db.query("DELETE FROM `api_trend_cache`")
+      db.query("INSERT INTO `api_trend_cache` VALUES ('#{DateTime.now.strftime("%Y/%m/%d %H:%M:%S")}', '#{res.to_json}')")
+
       res.to_json
     end
 

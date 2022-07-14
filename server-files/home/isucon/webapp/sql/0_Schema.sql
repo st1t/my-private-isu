@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS `isu_association_config`;
 DROP TABLE IF EXISTS `isu_condition`;
 DROP TABLE IF EXISTS `isu`;
 DROP TABLE IF EXISTS `user`;
+DROP TABLE IF EXISTS `api_trend_cache`;
 
 CREATE TABLE `isu` (
   `id` bigint AUTO_INCREMENT,
@@ -36,9 +37,15 @@ CREATE TABLE `isu_association_config` (
   `url` VARCHAR(255) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
+CREATE TABLE `api_trend_cache` (
+    `timestamp` DATETIME NOT NULL,
+    `json_data` TEXT     NOT NULL
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
 CREATE INDEX jia_isu_uuid_timestamp ON isu_condition(jia_isu_uuid,timestamp);
 CREATE INDEX isu_character ON isu(`character`);
 CREATE INDEX isu_jia_isu_uuid ON isu(`jia_isu_uuid`);
 
+
+INSERT INTO `api_trend_cache` (timestamp, json_data) VALUES ('2022/07/13 17:20:07', '{}');
 -- ALTER TABLE isu_condition ADD condition_level varchar(8) NULL;

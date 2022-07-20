@@ -3,6 +3,10 @@ data "aws_subnet" "main" {
     name   = "tag:Name"
     values = [var.subnet_name]
   }
+  filter {
+    name   = "vpc-id"
+    values = [aws_vpc.main.id]
+  }
   depends_on = [aws_subnet.main-public-a, aws_subnet.main-public-c, aws_subnet.main-public-d]
 }
 

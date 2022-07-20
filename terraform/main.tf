@@ -8,12 +8,12 @@ locals {
   github_users  = "kikumoto TanigUhey"               # GitHubのユーザー名。これを利用して/home/${os_login_user}/.ssh/authorized_keysを設定
   os_login_user = "ubuntu"                           # authorized_keysを設定するOSのユーザー名
 
-  game_instance_count = "1"                     # 競技者用EC2インスタンスの台数
+  game_instance_count = "3"                     # 競技者用EC2インスタンスの台数
   game_instance_ami   = "ami-0796be4f4814fc3d5" # 競技者用EC2インスタンスのAMI
   game_instance_type  = "c6i.large"             # 競技者用EC2インスタンスタイプ。公式推奨はc4.large
   game_spot_price     = "0.1"                   # 競技者用EC2スポットインスタンス料金。同一インスタンスタイプでもAZによって価格が異なるので注意
 
-  bench_instance_count = "0"                     # ベンマーク用EC2インスタンスの台数
+  bench_instance_count = "1"                     # ベンマーク用EC2インスタンスの台数
   bench_instance_ami   = "ami-0796be4f4814fc3d5" # ベンチマーク用EC2インスタンスのAMI
   bench_instance_type  = "c6i.xlarge"            # ベンチマーク用EC2インスタンスタイプ。公式推奨はc5.xlarge
   bench_spot_price     = "0.1"                   # ベンチマーク用EC2スポットインスタンスの最高価格。
